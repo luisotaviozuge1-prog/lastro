@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lastro — Assistente de Contratos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;450;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js"></script>
+<style>
+:root{
+  --azul:#0f2c4d; --azul-2:#16395f;
+  --verde:#3d5a40; --verde-cl:#577a5b;
+  --cinza:#6b7280; --cinza-cl:#9aa3ad;
+  --bg:#f5f6f4; --bg-2:#eceee9; --line:#dee1db;
+  --branco:#ffffff;
+  --ouro:#c79a3e; --ouro-dk:#a87f29;
+  --texto:#23303d; --red:#a8483b;
+  --shadow:0 1px 2px rgba(15,44,77,.05),0 8px 26px rgba(15,44,77,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--texto);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+::selection{background:var(--ouro);color:var(--azul)}
+
+.app{display:grid;grid-template-columns:270px 1fr;height:100vh;overflow:hidden}
+
+.side{background:var(--azul);color:#cdd8e4;display:flex;flex-direction:column;border-right:1px solid var(--azul-2)}
+.side-top{padding:20px 20px 16px;border-bottom:1px solid var(--azul-2);display:flex;align-items:center;gap:11px}
+.mark{width:34px;height:34px;border-radius:9px;flex:none;background:linear-gradient(135deg,var(--ouro),var(--ouro-dk));display:grid;place-items:center;color:var(--azul);font-family:'Fraunces',serif;font-weight:600;font-size:20px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.side-top .nm{font-family:'Fraunces',serif;font-size:21px;font-weight:500;color:#fff;line-height:1}
+.side-top .tg{font-size:10.5px;color:#7e93ab;margin-top:3px}
+.side-sec{padding:14px 14px 4px}
+.side-sec .lab{font-size:10px;text-transform:uppercase;letter-spacing:1.3px;color:#6b8099;padding:10px 10px 8px;display:flex;align-items:center;gap:7px}
+.side-btn{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:10px 12px;border-radius:9px;color:#c2cedc;font-size:13.5px;font-weight:450;margin-bottom:2px;transition:background .12s,color .12s}
+.side-btn svg{width:17px;height:17px;flex:none;opacity:.85}
+.side-btn:hover{background:var(--azul-2);color:#fff}
+.side-btn.on{background:var(--azul-2);color:#fff;box-shadow:inset 3px 0 0 var(--ouro)}
+.side-list{flex:1;overflow-y:auto;padding:6px 14px 14px}
+.sl-empty{font-size:12px;color:#6b8099;padding:14px 10px;line-height:1.5}
+.sl-group{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b8099;margin:12px 4px 6px}
+.sl-item{padding:9px 11px;border-radius:8px;cursor:pointer;transition:background .12s;margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.sl-item:hover{background:var(--azul-2)}
+.sl-item .t{font-size:13px;color:#e3eaf2;font-weight:450;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sl-item .s{font-size:11px;color:#7e93ab;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sl-item .sl-del{flex:none;opacity:0;color:#6b8099;padding:3px;transition:opacity .12s,color .12s}
+.sl-item:hover .sl-del{opacity:1}
+.sl-item .sl-del:hover{color:#e88}
+.side-foot{padding:13px 16px;border-top:1px solid var(--azul-2);font-size:10.5px;color:#6b8099}
+.side-foot .r{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.side-foot .dot{width:7px;height:7px;border-radius:50%;background:var(--verde-cl);box-shadow:0 0 0 3px rgba(87,122,91,.2)}
+
+.main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.topbar{display:none;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--branco)}
+.topbar .mb-menu{color:var(--azul);padding:4px}
+.topbar .mb-menu svg{width:22px;height:22px}
+.topbar .nm{font-family:'Fraunces';font-size:18px;color:var(--azul);font-weight:500}
+
+.chat{flex:1;overflow-y:auto;padding:24px 26px 12px;scroll-behavior:smooth;background:linear-gradient(180deg,#f7f4ea 0%,var(--bg) 240px)}
+.wrap{max-width:760px;margin:0 auto}
+.msg{display:flex;gap:13px;margin-bottom:22px;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg .av{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;font-size:12px;font-weight:600;margin-top:1px}
+.msg.ai .av{background:linear-gradient(135deg,var(--ouro),var(--ouro-dk));color:var(--azul);font-family:'Fraunces'}
+.msg.me .av{background:var(--azul);color:#fff}
+.msg .who{font-size:12px;font-weight:600;color:var(--azul);margin-bottom:3px}
+.msg.me .who{color:var(--ouro-dk)}
+.bubble{font-size:15px;line-height:1.6}
+.bubble p{margin-bottom:9px}.bubble p:last-child{margin-bottom:0}
+.bubble strong{font-weight:600}
+.bubble ul,.bubble ol{margin:6px 0 10px 20px}.bubble li{margin-bottom:3px}
+.bubble code{font-family:'IBM Plex Mono';font-size:13px;background:rgba(255,255,255,.5);padding:1px 5px;border-radius:5px}
+/* colored chat bubbles */
+.msg.me{flex-direction:row-reverse}
+.msg.me .body{display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+.msg.me .att{flex-direction:row-reverse}
+.msg.me .bubble{background:var(--azul);color:#eaf1f8;border-radius:14px 14px 4px 14px;padding:11px 15px;display:inline-block;box-shadow:0 2px 8px rgba(15,44,77,.18);text-align:left}
+.msg.me .bubble strong{color:#fff}
+.msg.me .bubble code{background:rgba(255,255,255,.15);color:#fff}
+.msg.ai .bubble{background:linear-gradient(180deg,#fdf6e6,#fbf1da);color:#3a3022;border:1px solid #efe0bd;border-radius:14px 14px 4px 14px;padding:12px 16px;box-shadow:0 2px 10px rgba(199,154,62,.13)}
+.msg.ai .bubble strong{color:var(--ouro-dk)}
+.msg.ai .typing{padding:2px 0}
+.msg.ai .typing span{background:var(--ouro-dk)}
+.att{display:inline-flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13px;color:var(--azul)}
+.att svg{width:16px;height:16px;color:var(--verde)}
+.att .meta{font-size:11px;color:var(--cinza)}
+
+.contract{margin:12px 0 4px;border:1px solid var(--line);border-radius:13px;background:var(--branco);box-shadow:var(--shadow);overflow:hidden}
+.contract .ch{padding:15px 20px 13px;border-bottom:1px solid var(--line);position:relative}
+.contract .ch::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--ouro)}
+.contract .eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:1.3px;color:var(--verde);font-weight:600;margin-bottom:5px}
+.contract .ct{font-family:'Fraunces',serif;font-size:18px;font-weight:500;color:var(--azul);line-height:1.25;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.contract .saved-flag{font-size:11px;color:var(--verde);background:rgba(61,90,64,.12);padding:2px 9px;border-radius:20px;font-weight:500;display:none}
+.contract.is-saved .saved-flag{display:inline-block}
+.contract .cb{padding:16px 22px 20px;font-size:13.5px;line-height:1.8;color:#3a4654;max-height:340px;overflow-y:auto;white-space:pre-wrap}
+.contract .cb[contenteditable="true"]{outline:none;background:#fffdf4;box-shadow:inset 0 0 0 2px rgba(199,154,62,.35);border-radius:6px}
+.contract .cb strong{color:var(--azul)}
+.contract .cf{display:flex;gap:8px;padding:11px 16px;background:var(--bg-2);border-top:1px solid var(--line);flex-wrap:wrap}
+.cbtn{font-size:12.5px;padding:7px 13px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;color:var(--texto);transition:all .12s;border:1px solid transparent}
+.cbtn svg{width:14px;height:14px}
+.cbtn:hover{background:var(--branco);border-color:var(--line)}
+.cbtn.primary{background:var(--ouro);color:var(--azul);font-weight:500}
+.cbtn.primary:hover{background:var(--ouro-dk)}
+.cbtn.done{color:var(--verde)}
+
+.typing{display:flex;gap:5px;padding:6px 0}
+.typing span{width:7px;height:7px;border-radius:50%;background:var(--cinza);opacity:.5;animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:.9;transform:translateY(-3px)}}
+
+.welcome{padding:30px 6px 10px;text-align:center}
+.welcome .big{font-family:'Fraunces',serif;font-size:27px;font-weight:500;color:var(--azul);margin-bottom:8px;line-height:1.2}
+.welcome .lead{font-size:14.5px;color:var(--cinza);max-width:480px;margin:0 auto 22px}
+.suggest{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:560px;margin:0 auto;text-align:left}
+.scard{border:1px solid var(--line);background:var(--branco);border-radius:12px;padding:13px 15px;transition:all .14s;box-shadow:var(--shadow)}
+.scard:hover{border-color:var(--ouro);transform:translateY(-1px)}
+.scard .st{font-size:13.5px;font-weight:500;color:var(--azul);margin-bottom:3px}
+.scard .ss{font-size:12px;color:var(--cinza)}
+
+.composer{padding:10px 26px 16px;border-top:1px solid var(--line);background:var(--bg)}
+.composer .wrap{max-width:760px;margin:0 auto}
+.pending{display:none;align-items:center;gap:10px;background:var(--branco);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:9px;font-size:13px}
+.pending.on{display:flex}
+.pending svg.fi{width:17px;height:17px;color:var(--verde);flex:none}
+.pending .pn{color:var(--azul);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pending .ps{font-size:11px;color:var(--cinza);margin-left:auto;white-space:nowrap}
+.pending .px{color:var(--cinza);padding:2px;flex:none}
+.pending .px:hover{color:var(--red)}
+.pending .px svg{width:15px;height:15px}
+.cwrap{display:flex;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:14px;background:var(--branco);padding:7px 8px;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s}
+.cwrap:focus-within{border-color:var(--ouro);box-shadow:0 0 0 3px rgba(199,154,62,.13)}
+.iconbtn{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none;color:var(--cinza);transition:all .12s}
+.iconbtn:hover{background:var(--bg-2);color:var(--azul)}
+.iconbtn svg{width:19px;height:19px}
+.iconbtn.rec{color:var(--branco);background:var(--red);animation:pulse 1.3s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(168,72,59,.5)}50%{box-shadow:0 0 0 6px rgba(168,72,59,0)}}
+.cwrap textarea{flex:1;border:none;outline:none;resize:none;font-family:inherit;font-size:15px;color:var(--texto);background:transparent;max-height:140px;line-height:1.5;padding:8px 2px}
+.cwrap textarea::placeholder{color:var(--cinza-cl)}
+.send{width:38px;height:38px;border-radius:10px;background:var(--azul);color:#fff;display:grid;place-items:center;flex:none;transition:background .12s}
+.send:hover{background:var(--azul-2)}
+.send:disabled{background:var(--line);color:var(--cinza);cursor:not-allowed}
+.send svg{width:18px;height:18px}
+.foot-note{text-align:center;font-size:11px;color:var(--cinza);margin-top:9px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.foot-note .vc{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.foot-note .vc input{accent-color:var(--ouro)}
+.foot-note svg{width:11px;height:11px;vertical-align:-1px}
+
+.toasts{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:10px;align-items:center}
+.toast{background:var(--azul);color:#fff;padding:11px 18px;border-radius:11px;font-size:13px;box-shadow:0 12px 30px rgba(15,44,77,.35);display:flex;align-items:center;gap:10px;animation:su .25s ease;max-width:90vw}
+.toast svg{width:16px;height:16px;color:var(--ouro);flex:none}
+@keyframes su{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+
+.scrim{position:fixed;inset:0;background:rgba(15,44,77,.4);z-index:30;display:none}
+.scrim.on{display:block}
+@media(max-width:860px){
+  .app{grid-template-columns:1fr}
+  .side{position:fixed;top:0;left:0;bottom:0;width:270px;z-index:31;transform:translateX(-100%);transition:transform .25s ease}
+  .side.on{transform:none}
+  .topbar{display:flex}
+  .suggest{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side">
+    <div class="side-top">
+      <div class="mark">L</div>
+      <div><div class="nm">Lastro</div><div class="tg">Contratos de locação e venda</div></div>
+    </div>
+    <div class="side-sec">
+      <button class="side-btn on" id="navChat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Nova conversa
+      </button>
+      <div class="lab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width:13px;height:13px"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+        Ver contratos sem pesquisar
+      </div>
+      <button class="side-btn" data-sort="az">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7h11M3 12h7M3 17h4M17 5v14M17 19l3-3M17 19l-3-3"/></svg>
+        Ordem alfabética
+      </button>
+      <button class="side-btn" data-sort="empresa">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3"/></svg>
+        Por empresa
+      </button>
+      <button class="side-btn" data-sort="data">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Mais recentes
+      </button>
+    </div>
+    <div class="side-list" id="sideList">
+      <div class="sl-empty">Seus contratos salvos vão aparecer aqui. Crie um no chat e toque em <b>Salvar</b> — depois é só clicar de um lado pra ver, sem precisar pesquisar.</div>
+    </div>
+    <div class="side-foot">
+      <div class="r"><span class="dot"></span> Conectado · IA ativa</div>
+      <div>Conforme LGPD · contratos salvos ficam neste aparelho</div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="mb-menu" id="mbMenu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <span class="nm">Lastro</span>
+    </div>
+    <div class="chat" id="chat">
+      <div class="wrap">
+        <div class="welcome" id="welcome">
+          <div class="big">Vamos cuidar dos seus contratos.</div>
+          <div class="lead">Converse comigo como num chat. Peça pra criar um contrato, anexe um que já existe pra eu analisar, ou fale por voz — tudo na mesma conversa.</div>
+          <div class="suggest" id="suggest">
+            <button class="scard" data-q="Crie um contrato de locação residencial do apartamento 304 na Rua das Acácias 120, locador Carlos Eduardo, locatário João Paulo, aluguel de R$ 2.400 por 30 meses.">
+              <div class="st">Criar locação residencial</div><div class="ss">Apto 304 · João Paulo · R$ 2.400/mês</div>
+            </button>
+            <button class="scard" data-q="Crie um contrato de compra e venda de uma casa na Rua Bento Gonçalves 540, vendedor Roberto Almeida, comprador João Paulo, valor R$ 680.000.">
+              <div class="st">Criar compra e venda</div><div class="ss">Casa · R$ 680.000 · à vista</div>
+            </button>
+            <button class="scard" id="scAttach">
+              <div class="st">📎 Analisar contrato existente</div><div class="ss">Anexe um PDF ou Word e pergunte sobre ele</div>
+            </button>
+            <button class="scard" data-q="Quais campos não podem faltar num contrato de locação comercial pra ficar seguro?">
+              <div class="st">Tirar uma dúvida</div><div class="ss">O que não pode faltar numa locação</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="wrap">
+        <button id="stopBtn" style="display:none;align-items:center;gap:7px;margin:0 auto 10px;padding:8px 16px;border-radius:20px;background:var(--azul);color:#fff;font-size:13px;font-weight:500;box-shadow:0 4px 14px rgba(15,44,77,.25)">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          Parar leitura
+        </button>
+        <div class="pending" id="pending">
+          <svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          <span class="pn" id="pendingName">arquivo.pdf</span>
+          <span class="ps" id="pendingStat">lendo…</span>
+          <button class="px" id="pendingX"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div class="cwrap">
+          <button class="iconbtn" id="attachBtn" title="Anexar contrato (PDF, Word, TXT)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <button class="iconbtn" id="micBtn" title="Falar (voz)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+          </button>
+          <textarea id="input" rows="1" placeholder="Escreva, fale ou anexe um contrato…"></textarea>
+          <button class="send" id="send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
+        </div>
+        <div class="foot-note">
+          <label class="vc"><input type="checkbox" id="speakToggle"> Ler respostas em voz alta</label>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Protótipo · revise contratos com um profissional</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<input type="file" id="fileInput" accept=".pdf,.docx,.txt,.doc" style="display:none">
+<div class="toasts" id="toasts"></div>
+
+<script>
+if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';}
+
+const chat=document.getElementById('chat');
+const chatWrap=chat.querySelector('.wrap');
+const input=document.getElementById('input');
+const sendBtn=document.getElementById('send');
+let welcome=document.getElementById('welcome');
+
+let history=[];
+let savedContracts=[];
+let pendingDoc=null;
+let currentSort='az';
+
+const SYSTEM=`Você é o Lastro, um assistente conversacional especializado em contratos imobiliários brasileiros (locação residencial, locação comercial, compra e venda, aditivos). Fale sempre em português do Brasil, de forma calorosa, direta e profissional, como um colega experiente de cartório/imobiliária.
+
+COMO AGIR:
+- Converse normalmente: responda dúvidas, oriente e tire questões jurídicas básicas.
+- Quando o usuário pedir para CRIAR, REDIGIR, GERAR, AJUSTAR ou REESCREVER um contrato, gere o documento completo.
+- ⚠️ REGRA ABSOLUTA E INVIOLÁVEL — CONTRATO SEMPRE INTEIRO: Toda vez que você mexer em um contrato (criar, alterar valor, mudar prazo, trocar parte, corrigir cláusula, deixar mais formal, qualquer coisa), você é OBRIGADO a reescrever e devolver o CONTRATO COMPLETO INTEIRO, da primeira até a última linha (título, qualificação das partes, TODAS as cláusulas numeradas, foro e assinaturas), já com a alteração aplicada, dentro de um bloco [[CONTRATO|...]]. É TERMINANTEMENTE PROIBIDO responder apenas com a cláusula ou o trecho que mudou. Mesmo que o usuário peça "muda só o valor", você reescreve o documento inteiro com o valor novo. Nunca diga "segue o trecho alterado" nem mostre só um pedaço. Se você não tem o texto completo do contrato anterior, reconstrua-o por inteiro a partir do que sabe. O usuário precisa do contrato pronto para imprimir/salvar, não de um recorte.
+- Quando o usuário ANEXAR um contrato (conteúdo marcado como [DOCUMENTO ANEXADO]), analise: identifique tipo, partes, imóvel, valores, prazos e aponte cláusulas ausentes, riscos ou inconsistências. Responda ao que ele pedir. Só gere um novo contrato (bloco abaixo) se ele pedir para reescrever/corrigir.
+- Se faltar info essencial, use exemplos plausíveis entre colchetes e sinalize o que confirmar, ou faça 1 pergunta curta. Prefira já entregar a minuta.
+
+FORMATO DO CONTRATO (obrigatório ao gerar/reescrever):
+- Uma frase curta e amigável ANTES do contrato.
+- Depois delimite EXATAMENTE assim:
+[[CONTRATO|Título curto]]
+(contrato completo em markdown leve: título, partes qualificadas, cláusulas numeradas, objeto, valor, prazo, foro, assinaturas)
+[[/CONTRATO]]
+- Depois do bloco, 1 frase dizendo o que ele pode pedir a seguir (ajustar valor, trocar parte, salvar).
+- Use [[CONTRATO]] SOMENTE quando há um contrato. Em conversa/análise normal, não use. Mas lembre: toda vez que houver alteração de um contrato, o bloco deve conter o documento COMPLETO atualizado.
+
+Mantenha contratos enxutos e legíveis. Considere LGPD e boas práticas, sem juridiquês excessivo. Como sua resposta pode ser lida em voz alta, evite tabelas e símbolos estranhos fora do bloco de contrato.`;
+
+function autoGrow(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,140)+'px';sendBtn.disabled=!input.value.trim()&&!pendingDoc}
+input.addEventListener('input',autoGrow);
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submit()}});
+
+function toast(msg){const w=document.getElementById('toasts');const el=document.createElement('div');el.className='toast';el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg><span>${msg}</span>`;w.appendChild(el);setTimeout(()=>{el.style.transition='opacity .3s,transform .3s';el.style.opacity='0';el.style.transform='translateY(8px)';setTimeout(()=>el.remove(),300)},2600)}
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function mdLite(t){return esc(t).replace(/^#{1,3} (.*)$/gm,'<strong>$1</strong>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>')}
+function paras(t){return t.trim().split(/\n{2,}/).map(p=>`<p>${mdLite(p).replace(/\n/g,'<br>')}</p>`).join('')}
+function nowStr(){const d=new Date();return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`}
+function scrollDown(){chat.scrollTop=chat.scrollHeight}
+function hideWelcome(){if(welcome){welcome.remove();welcome=null}}
+
+function addUser(text,attName){
+  hideWelcome();
+  const m=document.createElement('div');m.className='msg me';
+  let attHtml=attName?`<div class="att"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span>${esc(attName)}</span><span class="meta">anexado</span></div>`:'';
+  m.innerHTML=`<div class="av">EU</div><div class="body" style="flex:1;min-width:0"><div class="who">Você</div>${attHtml}<div class="bubble">${text?paras(text):''}</div></div>`;
+  chatWrap.appendChild(m);scrollDown();
+}
+function addTyping(){const m=document.createElement('div');m.className='msg ai';m.id='typing';m.innerHTML=`<div class="av">L</div><div class="body"><div class="who">Lastro</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div></div>`;chatWrap.appendChild(m);scrollDown()}
+function removeTyping(){const t=document.getElementById('typing');if(t)t.remove()}
+
+function addAI(raw){
+  const m=document.createElement('div');m.className='msg ai';
+  const body=document.createElement('div');body.className='body';body.style.flex='1';body.style.minWidth='0';
+  body.innerHTML=`<div class="who">Lastro</div>`;
+  const re=/\[\[CONTRATO\|([^\]]*)\]\]([\s\S]*?)\[\[\/CONTRATO\]\]/g;
+  let last=0,match,any=false,plain='';
+  while((match=re.exec(raw))!==null){
+    any=true;const before=raw.slice(last,match.index).trim();
+    if(before){body.appendChild(textBubble(before));plain+=before+' '}
+    body.appendChild(contractCard(match[1].trim()||'Contrato',match[2].trim()));
+    last=re.lastIndex;
+  }
+  const after=raw.slice(last).trim();
+  if(after){body.appendChild(textBubble(after));plain+=after}
+  if(!any&&!raw.trim())body.appendChild(textBubble('…'));
+  m.innerHTML=`<div class="av">L</div>`;m.appendChild(body);chatWrap.appendChild(m);scrollDown();
+  if(document.getElementById('speakToggle').checked) speak(plain||raw);
+}
+function textBubble(t){const d=document.createElement('div');d.className='bubble';d.innerHTML=paras(t);return d}
+
+function contractCard(title,content){
+  const wrap=document.createElement('div');wrap.className='contract';
+  wrap.innerHTML=`
+    <div class="ch"><div class="eyebrow">Minuta gerada</div><div class="ct">${esc(title)} <span class="saved-flag">✓ salvo</span></div></div>
+    <div class="cb">${mdLite(content).replace(/\n/g,'<br>')}</div>
+    <div class="cf">
+      <button class="cbtn primary act-save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg> Salvar</button>
+      <button class="cbtn act-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg> Editar texto</button>
+      <button class="cbtn act-formal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2M9 20h6M12 4v16"/></svg> Deixar mais formal</button>
+      <button class="cbtn act-copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar</button>
+      <button class="cbtn act-pdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 18h4" stroke-width="1.4"/></svg> Salvar PDF</button>
+      <button class="cbtn act-docx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg> Salvar Word</button>
+    </div>`;
+  const cb=wrap.querySelector('.cb');
+  wrap.querySelector('.act-save').onclick=()=>{
+    if(!wrap.classList.contains('is-saved')){
+      const txt=cb.innerText;
+      const rec={title,content:txt,when:nowStr(),ts:Date.now(),num:'#'+String(savedContracts.length+1).padStart(3,'0'),
+                 empresa:detectEmpresa(txt),pessoas:detectPessoas(txt),imovel:detectImovel(txt)};
+      savedContracts.push(rec);
+      persist();renderSide();
+      wrap.classList.add('is-saved');toast('Contrato salvo. Veja no painel à esquerda.');
+    } else toast('Atualização salva.');
+  };
+  wrap.querySelector('.act-edit').onclick=e=>{
+    const b=e.currentTarget;
+    if(cb.getAttribute('contenteditable')==='true'){cb.setAttribute('contenteditable','false');b.classList.remove('done');b.innerHTML=b.dataset.o;toast('Edição encerrada. Clique em Salvar.')}
+    else{b.dataset.o=b.innerHTML;cb.setAttribute('contenteditable','true');cb.focus();b.classList.add('done');b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Concluir'}
+  };
+  wrap.querySelector('.act-copy').onclick=()=>{navigator.clipboard?.writeText(cb.innerText);toast('Texto copiado.')};
+  wrap.querySelector('.act-formal').onclick=()=>{
+    const full=cb.innerText;
+    const titulo=title;
+    sendProgrammatic(
+      `Deixe o contrato abaixo mais FORMAL e JURÍDICO: reescreva em português técnico de cartório, com linguagem culta, terminologia jurídica adequada e cláusulas bem redigidas. Mantenha EXATAMENTE os mesmos dados (partes, CPFs/CNPJs, imóvel, valores, prazos, datas). Devolva o CONTRATO INTEIRO E COMPLETO, do título às assinaturas, no bloco [[CONTRATO|${titulo}]].\n\nContrato atual:\n"""\n${full}\n"""`,
+      'Deixar este contrato mais formal'
+    );
+  };
+  wrap.querySelector('.act-pdf').onclick=()=>exportPDF(title,cb.innerText);
+  wrap.querySelector('.act-docx').onclick=()=>exportDOCX(title,cb.innerText);
+  return wrap;
+}
+
+function fileName(title,ext){return title.replace(/[^\w\sÀ-ú-]/g,'').trim().slice(0,50).replace(/\s+/g,'_')+'.'+ext}
+
+function exportPDF(title,text){
+  try{
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({unit:'pt',format:'a4'});
+    const margin=56,maxW=doc.internal.pageSize.getWidth()-margin*2;
+    let y=margin;
+    doc.setFont('times','bold');doc.setFontSize(15);
+    doc.text(doc.splitTextToSize(title,maxW),margin,y);y+=26;
+    doc.setDrawColor(199,154,62);doc.setLineWidth(1.5);doc.line(margin,y-8,margin+60,y-8);
+    doc.setFont('times','normal');doc.setFontSize(11.5);
+    const lines=doc.splitTextToSize(text.replace(/\*\*/g,''),maxW);
+    const pageH=doc.internal.pageSize.getHeight();
+    lines.forEach(ln=>{
+      if(y>pageH-margin){doc.addPage();y=margin}
+      doc.text(ln,margin,y);y+=16;
+    });
+    doc.save(fileName(title,'pdf'));
+    toast('PDF salvo.');
+  }catch(e){toast('Não consegui gerar o PDF. Recarregue a página e tente de novo.')}
+}
+
+async function exportDOCX(title,text){
+  try{
+    const {Document,Packer,Paragraph,TextRun,AlignmentType}=window.docx;
+    const blocks=text.split(/\n/).map(line=>{
+      const bold=/^#{1,3}\s|^\*\*|CLÁUSULA|CONTRATO/i.test(line.trim());
+      const clean=line.replace(/^#{1,3}\s/,'').replace(/\*\*/g,'').trim();
+      return new Paragraph({spacing:{after:120},children:[new TextRun({text:clean,bold:bold&&clean.length<80,font:'Times New Roman',size:23})]});
+    });
+    const doc=new Document({sections:[{children:[
+      new Paragraph({alignment:AlignmentType.CENTER,spacing:{after:240},children:[new TextRun({text:title,bold:true,font:'Times New Roman',size:30})]}),
+      ...blocks
+    ]}]});
+    const blob=await Packer.toBlob(doc);
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fileName(title,'docx');a.click();
+    toast('Word (.docx) salvo.');
+  }catch(e){toast('Não consegui gerar o Word. Recarregue a página e tente de novo.')}
+}
+function detectEmpresa(t){const m=t.match(/(imobili[áa]ria|construtora|banco|incorporadora)\s+[A-ZÀ-Ú][\wÀ-ú]+(\s+[A-ZÀ-Ú][\wÀ-ú]+)?/i);return m?m[0].replace(/\s+/g,' ').trim():'Sem empresa'}
+
+/* ---- detecção de entidades (base da memória) ---- */
+function detectPessoas(t){
+  const nomes=new Set();
+  // nomes que aparecem antes de um CPF, ou após rótulos de papel
+  const reCPF=/([A-ZÀ-Ú][a-zà-ú]+(?:\s+(?:d[aeo]s?\s+)?[A-ZÀ-Ú][a-zà-ú]+){1,3})[^.]{0,40}?\d{3}\.?\d{3}\.?\d{3}-?\d{2}/g;
+  let m;while((m=reCPF.exec(t))!==null){nomes.add(m[1].replace(/\s+/g,' ').trim())}
+  const reRole=/(?:locat[áa]ri[oa]|locador[a]?|comprador[a]?|vendedor[a]?|mutu[áa]ri[oa]|outorgad[oa]|testemunha)s?[:\s]+([A-ZÀ-Ú][a-zà-ú]+(?:\s+(?:d[aeo]s?\s+)?[A-ZÀ-Ú][a-zà-ú]+){1,3})/gi;
+  while((m=reRole.exec(t))!==null){nomes.add(m[1].replace(/\s+/g,' ').trim())}
+  return [...nomes].slice(0,6);
+}
+function detectImovel(t){
+  const m=t.match(/(?:im[óo]vel|situad[oa]\s+(?:à|na?o?)|endere[çc]o[:\s]+|rua|avenida|av\.|apartamento|apto\.?|casa|sala|terreno|lote)[^\n.]{4,70}/i);
+  return m?m[0].replace(/\s+/g,' ').trim().slice(0,70):'';
+}
+
+/* ---- persistência local (funciona no navegador / site publicado) ---- */
+const STORE_KEY='lastro_contratos_v1';
+function persist(){try{localStorage.setItem(STORE_KEY,JSON.stringify(savedContracts))}catch(e){}}
+function loadStore(){
+  try{const raw=localStorage.getItem(STORE_KEY);if(raw){savedContracts=JSON.parse(raw)||[]}}catch(e){savedContracts=[]}
+}
+function memoryContext(){
+  if(!savedContracts.length)return '';
+  const linhas=savedContracts.map(c=>{
+    const ps=(c.pessoas||[]).join(', ')||'—';
+    return `• ${c.num} "${c.title}" | empresa: ${c.empresa} | partes: ${ps} | imóvel: ${c.imovel||'—'} | salvo em ${c.when.split(' ')[0]}`;
+  }).join('\n');
+  return `\n\n=== MEMÓRIA DE CONTRATOS SALVOS (use para responder perguntas como "mostre os contratos do João Paulo", "o que tem da Imobiliária X", "quantos contratos esse imóvel tem") ===\n${linhas}\n=== fim da memória ===\nQuando o usuário perguntar sobre uma pessoa, empresa ou imóvel, consulte essa memória, cite os contratos relacionados pelo número e título, e aponte conexões (mesma pessoa em vários contratos, mesmo imóvel, etc.). Se ele pedir para abrir/ver um contrato salvo específico, diga que ele pode clicar no contrato no painel à esquerda.`;
+}
+
+function renderSide(){
+  const list=document.getElementById('sideList');
+  if(!savedContracts.length){list.innerHTML='<div class="sl-empty">Seus contratos salvos vão aparecer aqui. Crie um no chat e toque em <b>Salvar</b> — depois é só clicar de um lado pra ver, sem precisar pesquisar.</div>';return}
+  let html='';
+  if(currentSort==='empresa'){
+    const groups={};savedContracts.forEach((c,i)=>{(groups[c.empresa]=groups[c.empresa]||[]).push(i)});
+    Object.keys(groups).sort((a,b)=>a.localeCompare(b,'pt')).forEach(g=>{html+=`<div class="sl-group">${esc(g)}</div>`;groups[g].forEach(i=>html+=itemHtml(savedContracts[i],i))});
+  } else {
+    let order=savedContracts.map((c,i)=>i);
+    if(currentSort==='az') order.sort((a,b)=>savedContracts[a].title.localeCompare(savedContracts[b].title,'pt'));
+    else order.sort((a,b)=>savedContracts[b].ts-savedContracts[a].ts);
+    order.forEach(i=>html+=itemHtml(savedContracts[i],i));
+  }
+  list.innerHTML=html;
+  list.querySelectorAll('.sl-item').forEach(it=>{
+    it.querySelector('.sl-body').onclick=()=>showSaved(+it.dataset.i);
+    const del=it.querySelector('.sl-del');if(del)del.onclick=e=>{e.stopPropagation();deleteContract(+it.dataset.i)};
+  });
+}
+function itemHtml(c,i){
+  const ps=(c.pessoas&&c.pessoas.length)?esc(c.pessoas.slice(0,2).join(', ')):(c.empresa||'');
+  return `<div class="sl-item" data-i="${i}"><div class="sl-body" style="flex:1;min-width:0"><div class="t">${esc(c.title)}</div><div class="s">${c.num} · ${ps?esc(ps):c.when.split(' ')[0]}</div></div><button class="sl-del" title="Excluir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>`;
+}
+function deleteContract(i){
+  savedContracts.splice(i,1);
+  savedContracts.forEach((c,k)=>c.num='#'+String(k+1).padStart(3,'0'));
+  persist();renderSide();toast('Contrato excluído.');
+}
+function showSaved(i){
+  const c=savedContracts[i];closeSide();hideWelcome();
+  const m=document.createElement('div');m.className='msg ai';const body=document.createElement('div');body.className='body';body.style.flex='1';body.style.minWidth='0';
+  body.innerHTML='<div class="who">Lastro</div>';
+  body.appendChild(textBubble('Aqui está seu contrato salvo:'));
+  const card=contractCard(c.title,c.content);card.classList.add('is-saved');body.appendChild(card);
+  m.innerHTML='<div class="av">L</div>';m.appendChild(body);chatWrap.appendChild(m);scrollDown();
+}
+
+document.querySelectorAll('.side-btn[data-sort]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.side-btn[data-sort]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');currentSort=b.dataset.sort;renderSide();
+  if(!savedContracts.length) toast('Você ainda não tem contratos salvos.');
+});
+document.getElementById('navChat').onclick=()=>closeSide();
+
+function openSide(){document.getElementById('side').classList.add('on');document.getElementById('scrim').classList.add('on')}
+function closeSide(){document.getElementById('side').classList.remove('on');document.getElementById('scrim').classList.remove('on')}
+document.getElementById('mbMenu').onclick=openSide;
+document.getElementById('scrim').onclick=closeSide;
+
+document.querySelectorAll('.scard[data-q]').forEach(s=>s.onclick=()=>{input.value=s.dataset.q;autoGrow();submit()});
+document.getElementById('scAttach').onclick=()=>document.getElementById('fileInput').click();
+
+document.getElementById('attachBtn').onclick=()=>document.getElementById('fileInput').click();
+document.getElementById('pendingX').onclick=()=>{pendingDoc=null;document.getElementById('pending').classList.remove('on');autoGrow()};
+document.getElementById('fileInput').addEventListener('change',async e=>{
+  const file=e.target.files[0];if(!file)return;e.target.value='';
+  const pend=document.getElementById('pending');
+  document.getElementById('pendingName').textContent=file.name;
+  document.getElementById('pendingStat').textContent='lendo…';pend.classList.add('on');
+  try{
+    const text=await extractText(file);
+    if(!text||!text.trim()){document.getElementById('pendingStat').textContent='vazio / não legível';toast('Não consegui ler texto. Se for PDF escaneado (imagem), precisa de OCR.');return}
+    pendingDoc={name:file.name,text:text.slice(0,40000)};
+    document.getElementById('pendingStat').textContent=Math.round(text.length/1000)+'k caracteres';
+    if(!input.value.trim()) input.placeholder='Pergunte sobre o contrato anexado… ex: "analisa e aponta os riscos"';
+    sendBtn.disabled=false;toast('Contrato lido. Agora me pergunte o que quiser sobre ele.');
+  }catch(err){document.getElementById('pendingStat').textContent='erro ao ler';toast('Problema ao ler o arquivo. Tente PDF, Word (.docx) ou TXT.')}
+});
+
+async function extractText(file){
+  const name=file.name.toLowerCase();
+  if(name.endsWith('.txt')) return await file.text();
+  if(name.endsWith('.pdf')){
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    let out='';
+    for(let i=1;i<=pdf.numPages;i++){const page=await pdf.getPage(i);const tc=await page.getTextContent();out+=tc.items.map(it=>it.str).join(' ')+'\n\n'}
+    return out;
+  }
+  if(name.endsWith('.docx')){const buf=await file.arrayBuffer();const res=await mammoth.extractRawText({arrayBuffer:buf});return res.value}
+  if(name.endsWith('.doc')) throw new Error('.doc antigo; salve como .docx ou PDF');
+  return await file.text();
+}
+
+let recog=null,recognizing=false;
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const micBtn=document.getElementById('micBtn');
+if(SR){
+  recog=new SR();recog.lang='pt-BR';recog.interimResults=true;recog.continuous=false;
+  let base='';
+  recog.onstart=()=>{recognizing=true;micBtn.classList.add('rec');base=input.value?input.value+' ':''};
+  recog.onresult=e=>{let txt='';for(let i=0;i<e.results.length;i++)txt+=e.results[i][0].transcript;input.value=base+txt;autoGrow()};
+  recog.onerror=ev=>{toast(ev.error==='not-allowed'?'Permita o microfone no navegador.':'Não captei o áudio. Tente de novo.')};
+  recog.onend=()=>{recognizing=false;micBtn.classList.remove('rec')};
+  micBtn.onclick=()=>{if(recognizing)recog.stop();else{try{recog.start()}catch(e){}}};
+} else { micBtn.onclick=()=>toast('Seu navegador não tem reconhecimento de voz. Use Chrome no PC ou Android.') }
+
+/* ----- voz mais natural + controle de parar ----- */
+let speaking=false;
+function pickVoice(){
+  const vs=speechSynthesis.getVoices();
+  // prioriza vozes naturais/online em pt-BR (Google, Microsoft) antes das robóticas locais
+  const prefs=[
+    v=>/google/i.test(v.name)&&/pt-?BR/i.test(v.lang),
+    v=>/(luciana|francisca|microsoft).*?(pt|bras)/i.test(v.name+v.lang),
+    v=>/pt-?BR/i.test(v.lang)&&!v.localService,
+    v=>/pt-?BR/i.test(v.lang),
+    v=>/pt/i.test(v.lang)
+  ];
+  for(const p of prefs){const f=vs.find(p);if(f)return f}
+  return null;
+}
+function humanize(t){
+  // pausas mais naturais: respira em pontuação, suaviza abreviações
+  return t
+    .replace(/R\$\s?/g,'reais ')
+    .replace(/\bnº\b/gi,'número')
+    .replace(/\bart\.?\b/gi,'artigo')
+    .replace(/\b(\d+)º\b/g,'$1')
+    .replace(/\s*[—–-]\s*/g,', ')
+    .replace(/\.{2,}/g,'.')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function speak(text){
+  if(!('speechSynthesis'in window)||!text)return;
+  try{
+    speechSynthesis.cancel();
+    let clean=text.replace(/[#*`>_~|]/g,'').replace(/\[\[?\/?CONTRATO[^\]]*\]?\]/g,'').slice(0,1500);
+    clean=humanize(clean);
+    // quebra em frases pra dar entonação mais natural e permitir parada rápida
+    const parts=clean.match(/[^.!?]+[.!?]*/g)||[clean];
+    const voice=pickVoice();
+    speaking=true;showStopBtn(true);
+    let idx=0;
+    const next=()=>{
+      if(idx>=parts.length||!speaking){speaking=false;showStopBtn(false);return}
+      const u=new SpeechSynthesisUtterance(parts[idx].trim());
+      u.lang='pt-BR';u.rate=0.97;u.pitch=1.02;u.volume=1;
+      if(voice)u.voice=voice;
+      u.onend=()=>{idx++;next()};
+      u.onerror=()=>{idx++;next()};
+      speechSynthesis.speak(u);
+    };
+    next();
+  }catch(e){speaking=false;showStopBtn(false)}
+}
+function stopSpeaking(){speaking=false;try{speechSynthesis.cancel()}catch(e){}showStopBtn(false)}
+function showStopBtn(on){const b=document.getElementById('stopBtn');if(b)b.style.display=on?'flex':'none'}
+if('speechSynthesis'in window){speechSynthesis.onvoiceschanged=()=>{};speechSynthesis.getVoices()}
+
+async function submit(){
+  let text=input.value.trim();
+  if(!text&&!pendingDoc)return;
+  const attName=pendingDoc?pendingDoc.name:null;
+  let apiContent=text;
+  if(pendingDoc){
+    if(!text) text='Analise este contrato anexado: identifique o tipo, as partes, valores, prazos e aponte cláusulas ausentes, riscos ou inconsistências.';
+    apiContent=`[DOCUMENTO ANEXADO — arquivo "${pendingDoc.name}"]\n"""\n${pendingDoc.text}\n"""\n\nPergunta/instrução do usuário: ${text}`;
+  }
+  const display=input.value.trim();
+  input.value='';input.placeholder='Escreva, fale ou anexe um contrato…';
+  pendingDoc=null;document.getElementById('pending').classList.remove('on');autoGrow();
+  await runTurn(apiContent,display,attName);
+}
+
+// envia um pedido detalhado à IA mas mostra um texto curto e amigável no chat
+async function sendProgrammatic(apiContent,displayText){
+  await runTurn(apiContent,displayText,null);
+}
+
+async function runTurn(apiContent,displayText,attName){
+  addUser(displayText,attName);
+  history.push({role:'user',content:apiContent});
+  sendBtn.disabled=true;addTyping();
+  let ctx=memoryContext();
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1600,system:SYSTEM+ctx,messages:history})});
+    const data=await res.json();removeTyping();
+    let out='';if(data&&data.content)out=data.content.map(b=>b.type==='text'?b.text:'').join('').trim();
+    if(!out)out='Desculpe, não consegui responder agora. Pode tentar de novo?';
+    history.push({role:'assistant',content:out});addAI(out);
+  }catch(err){removeTyping();addAI('Tive um problema de conexão. Verifique a internet e tente de novo.')}
+  finally{sendBtn.disabled=!input.value.trim()&&!pendingDoc;input.focus()}
+}
+sendBtn.onclick=submit;
+document.getElementById('stopBtn').onclick=stopSpeaking;
+loadStore();renderSide();
+input.focus();
+</script>
+</body>
+</html>
